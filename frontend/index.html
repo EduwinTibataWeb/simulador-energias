@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Escenario</title>
+<style>
+:root{--cyan:#22d3ee;--blue:#3b82f6;--green:#34d399;--orange:#fb923c;--violet:#a78bfa;--text:#e6edf7;--mut:#8fa3bf;--line:rgba(140,180,240,.18)}
+*{box-sizing:border-box}
+html,body{margin:0;background:transparent;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#stage{position:relative;width:100%;height:700px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(180deg,#040a18 0%,#091630 62%,#0b1b3a 100%)}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glass{background:rgba(9,18,38,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:0 12px 40px rgba(0,0,0,.45)}
+#panel{position:absolute;left:16px;top:16px;width:272px;max-width:calc(100% - 32px);max-height:calc(100% - 32px);overflow:auto;border-radius:16px;padding:14px 14px 12px}
+#panel.closed{width:auto;padding:8px 10px}
+#panel.closed .body{display:none}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ph h1{margin:0;font-size:14px;font-weight:600;letter-spacing:.01em}
+.icon{background:none;border:0;color:var(--mut);cursor:pointer;padding:4px;border-radius:8px;display:grid;place-items:center}
+.icon:hover{color:var(--text);background:rgba(255,255,255,.08)}
+.icon svg{width:18px;height:18px;transition:transform .2s}
+#panel.closed .icon svg{transform:rotate(180deg)}
+.f{margin-top:12px}
+.f label{display:flex;align-items:baseline;gap:7px;font-size:12px;color:var(--mut);margin-bottom:5px}
+.f label b{color:var(--cyan);font-weight:600;font-size:13px;min-width:12px}
+.in{display:flex;align-items:center;background:rgba(3,8,20,.55);border:1px solid var(--line);border-radius:10px;transition:border-color .15s,box-shadow .15s}
+.in:focus-within{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+.in input{flex:1;min-width:0;width:100%;background:none;border:0;outline:0;color:var(--text);font:600 14px/1 inherit;font-family:inherit;padding:10px 4px 10px 12px;font-variant-numeric:tabular-nums}
+.in span{font-size:12px;color:var(--mut);padding:0 12px 0 4px}
+.in.bad{border-color:var(--orange)}
+.meta{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:7px;font-size:12px;color:var(--mut)}
+.meta div{display:flex;justify-content:space-between}
+.meta b{color:var(--text);font-variant-numeric:tabular-nums}
+.meta .mu b{color:var(--orange)}
+.link{margin-top:10px;background:none;border:0;color:var(--cyan);font:500 12px inherit;font-family:inherit;cursor:pointer;padding:0}
+.link:hover{text-decoration:underline}
+#pill{position:absolute;top:16px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:500;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+#pill i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cyan);margin-right:8px;vertical-align:1px}
+#pill.fr i{background:var(--orange)}
+#pill.ok i{background:var(--green)}
+#hud{position:absolute;top:16px;right:16px;width:226px;border-radius:16px;padding:12px 14px}
+#hud h2{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--mut)}
+.hr{display:grid;grid-template-columns:46px 1fr 64px;align-items:center;gap:8px;font-size:12px;margin-top:7px}
+.hr b{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.bar{height:6px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:4px}
+#ctrl{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px;border-radius:999px}
+.b{display:flex;align-items:center;gap:7px;border:0;background:transparent;color:var(--text);font:500 13px inherit;font-family:inherit;padding:9px 15px;border-radius:999px;cursor:pointer;transition:background .15s,transform .1s}
+.b svg{width:16px;height:16px}
+.b:hover:not(:disabled){background:rgba(255,255,255,.1)}
+.b:active:not(:disabled){transform:scale(.96)}
+.b:disabled{opacity:.4;cursor:default}
+.b.pri{background:linear-gradient(135deg,#0ea5c6,#2563eb);box-shadow:0 4px 16px rgba(37,99,235,.4)}
+.b.pri:hover:not(:disabled){background:linear-gradient(135deg,#22d3ee,#3b82f6)}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.sp{padding:7px 10px;font-size:12px;color:var(--mut)}
+.sp.on{background:rgba(34,211,238,.16);color:var(--cyan)}
+#alert{position:absolute;inset:0;display:none;place-items:center;background:rgba(4,9,20,.72);padding:24px}
+#alert.show{display:grid}
+#alert div{max-width:520px;border:1px solid rgba(251,146,60,.5);background:rgba(40,22,8,.7);color:#fed7aa;border-radius:14px;padding:18px 20px;font-size:14px;line-height:1.55}
+@media (max-width:820px){#hud{display:none}#pill{top:auto;bottom:78px}.b span{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+
+  <div id="panel" class="glass">
+    <div class="ph">
+      <h1>Parámetros</h1>
+      <button class="icon" id="toggle" aria-label="Contraer o expandir panel" title="Contraer / expandir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+    </div>
+    <div class="body">
+      <div class="f"><label for="m"><b>m</b> Masa del bloque</label><div class="in"><input id="m" type="number" step="0.5" inputmode="decimal"><span>kg</span></div></div>
+      <div class="f"><label for="h"><b>h</b> Altura inicial</label><div class="in"><input id="h" type="number" step="0.1" inputmode="decimal"><span>m</span></div></div>
+      <div class="f"><label for="d"><b>d</b> Longitud del tramo BC</label><div class="in"><input id="d" type="number" step="0.1" inputmode="decimal"><span>m</span></div></div>
+      <div class="f"><label for="k"><b>k</b> Constante del resorte</label><div class="in"><input id="k" type="number" step="50" inputmode="decimal"><span>N/m</span></div></div>
+      <div class="f"><label for="x"><b>x</b> Compresión del resorte</label><div class="in"><input id="x" type="number" step="0.01" inputmode="decimal"><span>m</span></div></div>
+      <div class="meta">
+        <div><span>Gravedad (fija)</span><b>9.8 m/s²</b></div>
+        <div class="mu"><span>Fricción μk</span><b id="mu">—</b></div>
+      </div>
+      <button class="link" id="defaults">Restablecer caso de referencia</button>
+    </div>
+  </div>
+
+  <div id="pill" class="glass"><i></i><span id="pilltxt">Listo</span></div>
+
+  <div id="hud" class="glass">
+    <h2>Energía en vivo</h2>
+    <div class="hr"><span>Ek</span><div class="bar"><i id="b_ek" style="background:#22d3ee"></i></div><b id="t_ek">0</b></div>
+    <div class="hr"><span>Ep,y</span><div class="bar"><i id="b_epy" style="background:#3b82f6"></i></div><b id="t_epy">0</b></div>
+    <div class="hr"><span>Ep,el</span><div class="bar"><i id="b_epel" style="background:#34d399"></i></div><b id="t_epel">0</b></div>
+    <div class="hr"><span>Emec</span><div class="bar"><i id="b_em" style="background:#a78bfa"></i></div><b id="t_em">0</b></div>
+    <div class="hr"><span>F res.</span><div class="bar"><i id="b_fr" style="background:#6ee7b7"></i></div><b id="t_fr">0</b></div>
+    <div class="hr"><span>Disip.</span><div class="bar"><i id="b_df" style="background:#fb923c"></i></div><b id="t_df">0</b></div>
+  </div>
+
+  <div id="ctrl" class="glass">
+    <button class="b pri" id="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg><span>Iniciar</span></button>
+    <button class="b" id="pause"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg><span>Pausar</span></button>
+    <button class="b" id="reset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Reiniciar</span></button>
+    <div class="sep"></div>
+    <button class="b sp" data-s="0.25">0.25×</button>
+    <button class="b sp" data-s="0.5">0.5×</button>
+    <button class="b sp on" data-s="1">1×</button>
+  </div>
+
+  <div id="alert"><div id="alerttxt"></div></div>
+</div>
+
+<script>
+(function () {
+'use strict';
+/* ===== Utilidades y protocolo Streamlit ===== */
+const $ = s => document.querySelector(s);
+const post = o => window.parent.postMessage(Object.assign({isStreamlitMessage: true}, o), '*');
+const KEYS = ['m', 'h', 'd', 'k', 'x'];
+const f2 = (v, n = 2) => Number(v).toFixed(n);
+
+let P = null, R = null, ERR = [], DEF = null, sig = '';
+let tl = null, t = 0, playing = false, speed = 1, panelOpen = true, lastTs = 0;
+let W = 0, H = 0, dpr = 1;
+const sparks = [];
+const stage = $('#stage'), cv = $('#cv'), ctx = cv.getContext('2d'), panel = $('#panel');
+
+/* Imágenes opcionales: frontend/img/caja.png y resorte.png (si faltan, se dibuja el respaldo vectorial) */
+function loadImg(base) {
+  const im = new Image(); im.ok = false;
+  const exts = ['png', 'webp', 'jpg', 'jpeg']; let i = 0;
+  const next = () => { if (i < exts.length) im.src = 'img/' + base + '.' + exts[i++]; };
+  im.onload = () => { im.ok = true; };
+  im.onerror = next; next();
+  return im;
+}
+const imgBox = loadImg('caja'), imgSpring = loadImg('resorte');
+
+/* ===== Geometría del escenario (unidades visuales en metros) ===== */
+const TH0 = 70 * Math.PI / 180;   // inclinación de la curva en A (arco circular cóncavo que termina horizontal)
+function geom() {
+  const Rr = Math.max(P.h / (1 - Math.cos(TH0)), 1e-6);   // radio: Rr(1 − cosθ0) = h
+  const Lr = Rr * Math.sin(TH0);                          // avance horizontal de la curva
+  const Lg = Math.max(1.5, 0.5 * P.h);                    // tramo liso entre el fin de la curva y B (solo visual)
+  const Lf = Math.max(2.5, 0.12 * (Lr + Lg + P.d));       // tramo CD hasta tocar el resorte (solo visual)
+  const Ls = Math.max(1.2, 1.3 * P.x);                    // longitud natural del resorte (visual)
+  const base = Lr + Lg + P.d + Lf + Ls;
+  const bw = Math.max(0.5, 0.05 * base);                  // lado del bloque
+  const ext = 0.9 * bw * Math.cos(TH0);                   // prolongación del tope tras A
+  const xB = Lr + Lg;
+  return {Rr, Lr, Lg, Lf, Ls, bw, ext, W: base + ext, xB, xC: xB + P.d, xS: xB + P.d + Lf, xW: xB + P.d + Lf + Ls};
+}
+function curvePts(g, n) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const th = TH0 * (1 - i / n); pts.push([g.Lr - g.Rr * Math.sin(th), g.Rr * (1 - Math.cos(th))]); }
+  return pts;
+}
+/* Rapidez en la curva por conservación de energía: v = vB·√((cosθ − cosθ0)/(1 − cosθ0)); vB viene de Python. */
+function vOnArc(th) { return R.vB * Math.sqrt(Math.max((Math.cos(th) - Math.cos(TH0)) / (1 - Math.cos(TH0)), 0)); }
+function arcTable(g) {   // tiempo acumulado t(θ) = ∫ ds / v  (integración numérica, regla del punto medio)
+  const n = 2000, th = [TH0], tm = [0];
+  for (let i = 0; i < n; i++) {
+    const a = TH0 * (1 - i / n), b = TH0 * (1 - (i + 1) / n), v = Math.max(vOnArc((a + b) / 2), 1e-9);
+    tm.push(tm[i] + g.Rr * (a - b) / v); th.push(b);
+  }
+  return {th, tm};
+}
+function thetaAt(tab, u) {
+  const {th, tm} = tab; if (u >= tm[tm.length - 1]) return 0;
+  let lo = 0, hi = tm.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (tm[mid] <= u) lo = mid; else hi = mid; }
+  const f = (u - tm[lo]) / Math.max(tm[hi] - tm[lo], 1e-12);
+  return th[lo] + f * (th[hi] - th[lo]);
+}
+
+/* ===== Rebote: el resorte devuelve el bloque (extensión del modelo del instructivo) =====
+   Integración numérica (Verlet de velocidad) con las fuerzas reales del modelo:
+   resorte F = −k·c, pendiente de la curva m·g·sinθ y fricción cinética μk·m·g en BC.
+   El estado inicial es D: compresión máxima x, v = 0. La coordenada l es la longitud de arco desde A. */
+function retTable(g) {
+  const dt = Math.min(0.001, 0.05 / Math.sqrt(P.k / P.m)), n = Math.ceil(25 / dt);
+  const Lc = g.Rr * TH0, lB = Lc + g.Lg, lC = lB + P.d, lS = lC + g.Lf - g.bw / 2;
+  const cons = l => (l < Lc ? R.g * Math.sin(Math.max(TH0 - l / g.Rr, 0)) : 0) - (l > lS ? P.k * (l - lS) / P.m : 0);
+  let l = lS + P.x, v = 0, wf = 0;
+  const L = [l], V = [v], Wf = [0];
+  for (let i = 0; i < n; i++) {
+    const vh = v + 0.5 * cons(l) * dt;
+    let ln = l + vh * dt;
+    if (ln < 0) ln = 0;
+    const a1 = cons(ln);
+    let vn = vh + 0.5 * a1 * dt;
+    if (ln < 0.0 + 1e-12 && vn < 0) vn = 0;
+    if (R.mu > 0 && ln >= lB && ln <= lC) {                 // fricción cinética: μk·g, opuesta al movimiento
+      const af = R.mu * R.g;
+      if (vn > 0) vn = Math.max(vn - af * dt, 0); else if (vn < 0) vn = Math.min(vn + af * dt, 0);
+      wf += R.mu * P.m * R.g * Math.abs(ln - l);
+    }
+    l = ln; v = vn; L.push(l); V.push(v); Wf.push(wf);
+    if (v === 0 && a1 === 0) break;                          // en reposo sobre un tramo horizontal
+  }
+  return {dt, L, V, Wf, T: (L.length - 1) * dt, Lc, lB, lC, lS};
+}
+
+/* ===== Línea de tiempo: usa los resultados calculados en Python ===== */
+function buildTimeline() {
+  if (!R) { tl = null; return; }
+  const g = geom(), segs = [];
+  if (R.vB > 1e-9) {
+    const tab = arcTable(g);
+    segs.push({k: 1, sub: 'arc', T: tab.tm[tab.tm.length - 1], tab});   // curva sin fricción
+    segs.push({k: 1, sub: 'lead', T: g.Lg / R.vB});                     // tramo liso hasta B (v constante)
+    segs.push({k: 2, T: 2 * P.d / (R.vB + R.vC)});                      // fricción: desaceleración constante
+    if (R.vC > 1e-9) {
+      segs.push({k: 3, T: (g.Lf - g.bw / 2) / R.vC});                   // velocidad constante
+      if (P.x > 0) {
+        segs.push({k: 4, T: Math.PI / 2 * Math.sqrt(P.m / P.k)}); // ¼ de periodo del MAS
+        const tab = retTable(g); segs.push({k: 5, T: tab.T, tab});     // el resorte devuelve el bloque
+      }
+    }
+  }
+  tl = {segs, total: segs.reduce((a, s) => a + s.T, 0), g};
+}
+
+function calc(k, u, sg, g) {
+  const vB = R.vB, vC = R.vC, o = {stage: k, c: 0, wf: 0, done: false, kind: 'flat', theta: 0, dir: 1, zone: ''};
+  if (k === 1 && sg.sub === 'arc') {
+    const th = thetaAt(sg.tab, u);
+    o.kind = 'ramp'; o.theta = th; o.xx = g.Lr - g.Rr * Math.sin(th); o.y = g.Rr * (1 - Math.cos(th)); o.v = vOnArc(th);
+  } else if (k === 1) {
+    o.xx = g.Lr + vB * u; o.v = vB; o.y = 0;
+  } else if (k === 2) {
+    const a = (vC - vB) / sg.T;
+    o.xx = g.xB + vB * u + 0.5 * a * u * u; o.v = vB + a * u; o.y = 0;
+    o.wf = R.mu * P.m * R.g * (o.xx - g.xB);
+  } else if (k === 3) {
+    o.xx = g.xC + vC * u; o.v = vC; o.y = 0; o.wf = R.e_diss;
+  } else if (k === 5) {
+    const t5 = sg.tab, f = Math.min(u / t5.dt, t5.L.length - 1), i = Math.min(Math.floor(f), Math.max(t5.L.length - 2, 0)), fr = f - i;
+    const j = Math.min(i + 1, t5.L.length - 1), l = t5.L[i] + fr * (t5.L[j] - t5.L[i]), v = t5.V[i] + fr * (t5.V[j] - t5.V[i]);
+    o.v = Math.abs(v); o.dir = v < 0 ? -1 : 1; o.wf = R.e_diss + t5.Wf[i] + fr * (t5.Wf[j] - t5.Wf[i]);
+    if (l < t5.Lc) {
+      const th = TH0 - l / g.Rr; o.kind = 'ramp'; o.theta = th; o.xx = g.Lr - g.Rr * Math.sin(th); o.y = g.Rr * (1 - Math.cos(th)); o.zone = 'curve';
+    } else {
+      o.xx = g.Lr + (l - t5.Lc); o.y = 0; o.c = Math.max(l - t5.lS, 0);
+      o.zone = l > t5.lS ? 'spring' : l >= t5.lC ? 'cd' : l >= t5.lB ? 'bc' : 'lead';
+    }
+  } else {
+    const w = Math.sqrt(P.k / P.m);
+    o.c = P.x * Math.sin(w * u); o.xx = g.xS - g.bw / 2 + o.c;
+    o.v = vC * Math.cos(w * u); o.y = 0; o.wf = R.e_diss;
+  }
+  return o;
+}
+
+function stateAt(tt) {
+  const g = tl ? tl.g : geom();
+  if (!tl || !tl.segs.length) return {stage: 0, kind: 'ramp', theta: TH0, xx: 0, v: 0, y: P.h, c: 0, wf: 0, done: true, idle: true};
+  let rem = tt;
+  for (let i = 0; i < tl.segs.length; i++) {
+    const sg = tl.segs[i], last = i === tl.segs.length - 1;
+    if (rem <= sg.T || last) {
+      const s = calc(sg.k, Math.min(Math.max(rem, 0), sg.T), sg, g);
+      s.done = last && rem >= sg.T - 1e-9; return s;
+    }
+    rem -= sg.T;
+  }
+}
+
+/* ===== Entrada desde Streamlit ===== */
+function onRender(a) {
+  P = a.params; R = a.result; ERR = a.errors || []; DEF = a.defaults;
+  syncInputs();
+  const s = JSON.stringify([P, R]);
+  if (s !== sig) { sig = s; t = 0; playing = false; sparks.length = 0; buildTimeline(); }
+  $('#mu').textContent = R ? f2(R.mu, 3) : '—';
+  $('#alerttxt').textContent = ERR.join(' ');
+  $('#alert').classList.toggle('show', !R);
+  refreshButtons();
+}
+
+function syncInputs() {
+  KEYS.forEach(k => {
+    const el = $('#' + k);
+    if (document.activeElement !== el && parseFloat(el.value) !== P[k]) el.value = P[k];
+    el.parentElement.classList.toggle('bad', ERR.length > 0 && !(P[k] > 0 || ((k === 'h' || k === 'x') && P[k] >= 0)));
+  });
+}
+
+let timer = null;
+function pushValues() {
+  const v = {};
+  for (const k of KEYS) { const n = parseFloat($('#' + k).value); if (!isFinite(n)) return; v[k] = n; }
+  if (P && KEYS.every(k => v[k] === P[k])) return;
+  post({type: 'streamlit:setComponentValue', value: v, dataType: 'json'});
+}
+KEYS.forEach(k => {
+  const el = $('#' + k);
+  el.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(pushValues, 450); });
+  el.addEventListener('change', () => { clearTimeout(timer); pushValues(); });
+});
+$('#defaults').onclick = () => { if (!DEF) return; KEYS.forEach(k => { $('#' + k).value = DEF[k]; }); pushValues(); };
+
+/* ===== Controles ===== */
+function refreshButtons() {
+  const ok = !!tl && tl.total > 0;
+  $('#play').disabled = !ok; $('#pause').disabled = !ok || !playing; $('#reset').disabled = !ok;
+}
+$('#play').onclick = () => { if (!tl || !tl.total) return; if (t >= tl.total) t = 0; playing = true; refreshButtons(); };
+$('#pause').onclick = () => { playing = false; refreshButtons(); };
+$('#reset').onclick = () => { t = 0; playing = false; sparks.length = 0; refreshButtons(); };
+document.querySelectorAll('.sp').forEach(b => b.onclick = () => {
+  speed = parseFloat(b.dataset.s);
+  document.querySelectorAll('.sp').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#toggle').onclick = () => { panelOpen = !panelOpen; panel.classList.toggle('closed', !panelOpen); };
+
+/* ===== Tamaño ===== */
+function sizeFrame() {
+  let ph = 0; try { ph = window.parent.innerHeight; } catch (e) {}
+  const h = Math.round(Math.min(920, Math.max(560, (ph || 820) - 80)));
+  stage.style.height = h + 'px';
+  post({type: 'streamlit:setFrameHeight', height: h + 2});
+}
+function resize() {
+  W = stage.clientWidth; H = stage.clientHeight; dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+}
+new ResizeObserver(resize).observe(stage);
+window.addEventListener('resize', () => { sizeFrame(); });
+try { window.parent.addEventListener('resize', sizeFrame); } catch (e) {}
+
+/* ===== Dibujo ===== */
+function view() {
+  const g = tl ? tl.g : geom();
+  const left = panelOpen && W >= 820 ? panel.offsetWidth + 16 + 120 : 110;
+  const right = W >= 820 ? 70 : 40, top = 96, bottom = 150;
+  const aw = W - left - right, ah = H - top - bottom;
+  const sc = Math.max(4, Math.min(aw / g.W, ah / (P.h + 2 * g.bw + 0.6)));
+  const x0 = left + (aw - g.W * sc) / 2 + g.ext * sc, gy = H - bottom;
+  return {g, sc, gy, wx: x => x0 + x * sc, wy: y => gy - y * sc};
+}
+
+function rr(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function text(s, x, y, color, size, align, weight) {
+  ctx.fillStyle = color; ctx.font = (weight || 500) + ' ' + size + 'px Inter,system-ui,sans-serif';
+  ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y);
+}
+function pill(s, x, y, color) {
+  ctx.font = '600 12px Inter,system-ui,sans-serif';
+  const w = ctx.measureText(s).width + 20;
+  rr(x - w / 2, y - 12, w, 24, 12); ctx.fillStyle = 'rgba(30,16,6,.8)'; ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke(); text(s, x, y, color, 12, 'center', 600);
+}
+function badge(l, x, y, color) {
+  ctx.beginPath(); ctx.arc(x, y, 13, 0, 6.2832); ctx.fillStyle = 'rgba(7,14,30,.92)'; ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke(); text(l, x, y + 0.5, color, 13, 'center', 700);
+}
+function dimH(x1, x2, y, label, color) {
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.moveTo(x1, y - 6); ctx.lineTo(x1, y + 6); ctx.moveTo(x2, y - 6); ctx.lineTo(x2, y + 6); ctx.stroke();
+  text(label, (x1 + x2) / 2, y - 12, color, 12, 'center', 600);
+}
+
+function drawScene(V, s, dt) {
+  const {g, sc, gy, wx, wy} = V, bwPx = g.bw * sc, bh = bwPx * 0.55;
+  // cuadrícula
+  const step = sc >= 16 ? 1 : 5;
+  ctx.strokeStyle = 'rgba(120,160,220,.05)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let x = Math.ceil(-g.ext / step) * step; x <= g.W; x += step) { ctx.moveTo(wx(x), 0); ctx.lineTo(wx(x), H); }
+  for (let y = 0; gy - y * sc > 0; y += step) { ctx.moveTo(0, wy(y)); ctx.lineTo(W, wy(y)); }
+  ctx.stroke();
+  // suelo
+  const gg = ctx.createLinearGradient(0, gy, 0, H); gg.addColorStop(0, 'rgba(26,48,88,.85)'); gg.addColorStop(1, 'rgba(8,16,34,.95)');
+  ctx.fillStyle = gg; ctx.fillRect(wx(g.Lr), gy, wx(g.xW) - wx(g.Lr) + 14, H - gy);
+  // rampa curva (con tope tras A)
+  const pts = curvePts(g, 60), yExt = P.h + 0.9 * g.bw * Math.sin(TH0);
+  const rg = ctx.createLinearGradient(0, wy(yExt), 0, gy); rg.addColorStop(0, 'rgba(48,82,140,.9)'); rg.addColorStop(1, 'rgba(18,34,68,.95)');
+  ctx.beginPath(); ctx.moveTo(wx(-g.ext), gy); ctx.lineTo(wx(-g.ext), wy(yExt));
+  pts.forEach(p => ctx.lineTo(wx(p[0]), wy(p[1]))); ctx.lineTo(wx(g.Lr), gy); ctx.closePath();
+  ctx.fillStyle = rg; ctx.fill();
+  ctx.strokeStyle = 'rgba(34,211,238,.95)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(wx(-g.ext), wy(yExt)); pts.forEach(p => ctx.lineTo(wx(p[0]), wy(p[1]))); ctx.lineTo(wx(g.xB), gy); ctx.stroke();
+  // BC rugoso (fricción)
+  const xb = wx(g.xB), xc = wx(g.xC);
+  const fg = ctx.createLinearGradient(0, gy, 0, gy + 16); fg.addColorStop(0, 'rgba(251,146,60,.38)'); fg.addColorStop(1, 'rgba(251,146,60,0)');
+  ctx.fillStyle = fg; ctx.fillRect(xb, gy, xc - xb, 16);
+  ctx.strokeStyle = 'rgba(251,146,60,.8)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  for (let x = xb + 4; x < xc - 2; x += 9) { ctx.moveTo(x, gy + 1); ctx.lineTo(x - 6, gy + 10); }
+  ctx.stroke();
+  ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(xb, gy); ctx.lineTo(xc, gy); ctx.stroke();
+  // CD sin fricción
+  ctx.strokeStyle = 'rgba(34,211,238,.95)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(xc, gy); ctx.lineTo(wx(g.xW), gy); ctx.stroke();
+  text('Sin fricción', (wx(g.xC) + wx(g.xS)) / 2, gy + 14, 'rgba(34,211,238,.7)', 11);
+  text('Sin fricción', (wx(g.Lr) + xb) / 2, gy + 14, 'rgba(34,211,238,.7)', 11);
+  text('Fricción μk = ' + (R ? f2(R.mu, 3) : '—'), (xb + xc) / 2, gy + 26, 'rgba(251,146,60,.95)', 11, 'center', 600);
+  { const th = TH0 / 2, p = [g.Lr - g.Rr * Math.sin(th), g.Rr * (1 - Math.cos(th))];
+    ctx.save(); ctx.translate(wx(p[0]) + 20 * Math.sin(th), wy(p[1]) - 20 * Math.cos(th)); ctx.rotate(th);
+    text('Sin fricción', 0, 0, 'rgba(34,211,238,.7)', 11); ctx.restore(); }
+
+  // pared y resorte (la placa de madera va a la izquierda, como en la imagen original)
+  const xW = wx(g.xW), c = s.c, len = (g.Ls - c) * sc, ySp = gy - bwPx * 0.5, xL = xW - len;
+  rr(xW, gy - bwPx * 1.5, 14, bwPx * 1.5, 3); ctx.fillStyle = '#16294d'; ctx.fill(); ctx.strokeStyle = 'rgba(140,180,240,.35)'; ctx.lineWidth = 1; ctx.stroke();
+  const pw = Math.max(6, bh * 0.2);
+  if (imgSpring.ok && len > pw + 4) {
+    const sw = imgSpring.naturalWidth * 0.08, iw = imgSpring.naturalWidth, ih = imgSpring.naturalHeight;
+    ctx.drawImage(imgSpring, 0, 0, sw, ih, xL, ySp - bh / 2, pw, bh);                      // placa: ancho fijo
+    ctx.drawImage(imgSpring, sw, 0, iw - sw, ih, xL + pw, ySp - bh / 2, len - pw, bh);     // espiras: se estiran
+  } else if (imgSpring.ok) {
+    ctx.drawImage(imgSpring, xL, ySp - bh / 2, Math.max(len, 2), bh);
+  } else {
+    ctx.fillStyle = '#b4622c'; ctx.fillRect(xL, ySp - bh / 2, pw, bh);
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(xL + pw, ySp);
+    const n = 14, amp = bh / 2, cl = Math.max(len - pw, 2);
+    for (let i = 1; i <= n; i++) ctx.lineTo(xL + pw + (i - 0.5) * cl / n, ySp + (i % 2 ? -amp : amp));
+    ctx.lineTo(xW, ySp); ctx.stroke();
+  }
+  // dimensión x (fantasma + en vivo), por encima de la pared para no chocar con las etiquetas del bloque
+  const yx = gy - bwPx * 1.5 - 12, xs = wx(g.xS);
+  ctx.setLineDash([4, 4]); ctx.globalAlpha = 0.45;
+  dimH(xs, xs + P.x * sc, yx, '', '#34d399'); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  if (c * sc > 1.5) dimH(xs, xs + c * sc, yx, '', '#34d399');
+  text('x = ' + f2(c > 0 ? c : P.x, 3) + ' m', xs + Math.max(P.x * sc, 30) / 2, yx - 12, '#34d399', 12, 'center', 600);
+
+  // dimensiones h y d
+  const xl = wx(-g.ext) - 34;
+  ctx.strokeStyle = 'rgba(167,185,214,.85)'; ctx.lineWidth = 1.3; ctx.beginPath();
+  ctx.moveTo(xl, gy); ctx.lineTo(xl, wy(P.h)); ctx.moveTo(xl - 6, gy); ctx.lineTo(xl + 6, gy); ctx.moveTo(xl - 6, wy(P.h)); ctx.lineTo(xl + 6, wy(P.h)); ctx.stroke();
+  ctx.setLineDash([3, 4]); ctx.globalAlpha = .5; ctx.beginPath(); ctx.moveTo(xl, wy(P.h)); ctx.lineTo(wx(0), wy(P.h)); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.save(); ctx.translate(xl - 10, (gy + wy(P.h)) / 2); ctx.rotate(-Math.PI / 2); text('h = ' + f2(P.h) + ' m', 0, 0, '#cbd5e1', 12, 'center', 600); ctx.restore();
+  dimH(xb, xc, gy + 56, 'd = BC = ' + f2(P.d) + ' m', '#fdba74');
+
+  // puntos A, B, C, D
+  badge('A', wx(-g.ext), wy(yExt) - 24, '#22d3ee');
+  badge('B', xb, gy + 28, '#22d3ee'); badge('C', xc, gy + 28, '#fb923c'); badge('D', xs + P.x * sc, gy + 28, '#34d399');
+
+  // bloque (sobre la curva se inclina siguiendo la tangente)
+  const px = wx(s.xx), py = wy(s.y), ang = s.kind === 'ramp' ? s.theta : 0;
+  if ((s.stage === 2 || (s.stage === 5 && s.zone === 'bc')) && playing && s.v > 0.3) {
+    for (let i = 0, n = Math.round(60 * dt * speed); i < n; i++)
+      sparks.push({x: px - s.dir * bwPx * 0.4, y: gy, vx: -s.dir * (20 + Math.random() * 60), vy: -(10 + Math.random() * 60), l: 0.5});
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const p = sparks[i]; p.l -= dt; if (p.l <= 0) { sparks.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 220 * dt;
+    ctx.fillStyle = 'rgba(251,146,60,' + (p.l * 2).toFixed(2) + ')'; ctx.fillRect(p.x, Math.min(p.y, gy), 2.5, 2.5);
+  }
+  ctx.save(); ctx.translate(px, py); ctx.rotate(ang);
+  if (imgBox.ok) ctx.drawImage(imgBox, -bwPx / 2, -bwPx, bwPx, bwPx);
+  else {
+    rr(-bwPx / 2, -bwPx, bwPx, bwPx, 4); ctx.fillStyle = '#b4622c'; ctx.fill(); ctx.strokeStyle = '#6b3414'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-bwPx / 2, -bwPx); ctx.lineTo(bwPx / 2, 0); ctx.moveTo(bwPx / 2, -bwPx); ctx.lineTo(-bwPx / 2, 0); ctx.stroke();
+  }
+  ctx.restore();
+  const lift = ang > 0.2 ? bwPx * 1.35 : bwPx + 10;
+  text('v = ' + f2(s.v) + ' m/s', px + (ang > 0.2 ? bwPx * 0.6 * Math.sin(ang) : 0), py - lift, '#e6edf7', 12, 'center', 600);
+
+  // fuerza del resorte F = k·c (siempre hacia la izquierda: se opone a la compresión y empuja el bloque de vuelta)
+  if (s.c > 1e-6 && R) {
+    const F = P.k * s.c, Fm = P.k * P.x, ya = py - bwPx / 2, Ln = bwPx * (0.5 + 0.9 * F / Fm), xt = px - Ln;
+    ctx.lineCap = 'round';
+    [['rgba(4,10,24,.9)', 7], ['#34d399', 3.5]].forEach(a => {
+      ctx.strokeStyle = a[0]; ctx.lineWidth = a[1]; ctx.beginPath(); ctx.moveTo(px, ya); ctx.lineTo(xt, ya);
+      ctx.moveTo(xt + 11, ya - 7); ctx.lineTo(xt, ya); ctx.lineTo(xt + 11, ya + 7); ctx.stroke();
+    });
+    text('F = kx = ' + f2(F, 1) + ' N', xt - 8, ya, '#6ee7b7', 12, 'right', 600);
+  }
+  // pérdida de energía por fricción
+  if (s.stage >= 2 && R) pill('Disipada por fricción: ' + f2(s.wf) + ' J', (xb + xc) / 2, gy - bwPx * 1.9, '#fb923c');
+}
+
+function updateHud(s) {
+  if (!R) return;
+  const ek = 0.5 * P.m * s.v * s.v, epy = P.m * R.g * s.y, epel = 0.5 * P.k * s.c * s.c, em = ek + epy + epel;
+  const E0 = Math.max(P.m * R.g * P.h, 0.5 * P.k * P.x * P.x, 1e-9);
+  const set = (id, val) => { $('#b_' + id).style.width = Math.max(0, Math.min(100, val / E0 * 100)) + '%'; };
+  const Fr = P.k * s.c; $('#b_fr').style.width = Math.min(100, Fr / Math.max(P.k * P.x, 1e-9) * 100) + '%'; $('#t_fr').textContent = f2(Fr, 1) + ' N';
+  set('ek', ek); set('epy', epy); set('epel', epel); set('em', em); set('df', s.wf);
+  $('#t_ek').textContent = f2(ek, 1) + ' J'; $('#t_epy').textContent = f2(epy, 1) + ' J';
+  $('#t_epel').textContent = f2(epel, 1) + ' J'; $('#t_em').textContent = f2(em, 1) + ' J'; $('#t_df').textContent = f2(s.wf, 1) + ' J';
+}
+
+function updatePill(s) {
+  const el = $('#pill'); let msg = 'Listo · el bloque está en reposo en A', cls = '';
+  if (!R) msg = 'Revisa los parámetros';
+  else if (s.idle) msg = 'Sin movimiento: h = 0, el bloque no desciende';
+  else if (t === 0 && !playing) msg = 'Listo · el bloque está en reposo en A';
+  else if (s.stage === 1) msg = 'Etapa 1 · A → B · rampa sin fricción';
+  else if (s.stage === 2) { msg = 'Etapa 2 · B → C · fricción cinética'; cls = 'fr'; }
+  else if (s.stage === 3) msg = 'Etapa 3 · C → D · tramo sin fricción';
+  else if (s.stage === 4) msg = 'Etapa 4 · D · el resorte se comprime';
+  else if (s.stage === 5) {
+    if (s.zone === 'spring') msg = 'Etapa 5 · D → C · el resorte se descomprime y empuja el bloque';
+    else if (s.zone === 'cd') msg = 'Regreso · tramo sin fricción';
+    else if (s.zone === 'bc') { msg = 'Regreso · la fricción frena el bloque'; cls = 'fr'; }
+    else msg = 'Regreso · el bloque sube por la curva sin fricción';
+  }
+  if (s.done && !s.idle && R && t > 0) {
+    cls = 'ok';
+    if (s.stage === 5) msg = s.v > 1e-6 ? 'Sin pérdidas (μk = 0): el movimiento continúa' :
+      s.zone === 'bc' ? 'Reposo · el bloque se detiene a ' + f2(tl.g.xC - s.xx) + ' m de C, dentro de BC' : 'Reposo · el bloque se detuvo';
+    else msg = 'El bloque se detiene en C (x = 0)';
+  }
+  el.className = 'glass ' + cls; $('#pilltxt').textContent = msg;
+}
+
+function frame(ts) {
+  const dt = Math.min((ts - (lastTs || ts)) / 1000, 0.05); lastTs = ts;
+  if (P && W) {
+    if (playing && tl) {
+      t += dt * speed;
+      if (t >= tl.total) { t = tl.total; playing = false; refreshButtons(); }
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const s = stateAt(t), V = view();
+    drawScene(V, s, dt); updateHud(s); updatePill(s);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ===== Arranque ===== */
+window.addEventListener('message', e => { if (e.data && e.data.type === 'streamlit:render') onRender(e.data.args); });
+sizeFrame(); resize();
+if (stage.clientWidth < 820) { panelOpen = false; panel.classList.add('closed'); }
+post({type: 'streamlit:componentReady', apiVersion: 1});
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
